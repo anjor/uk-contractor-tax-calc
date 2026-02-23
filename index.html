@@ -376,7 +376,8 @@ function calcPAYE(grossRevenue, pension) {
   const it = calcIncomeTax(salary);
   const ni = calcEmployeeNI(salary);
   const employerNI = calcEmployerNI(salary);
-  return { salary: grossRevenue, incomeTax: it, ni: ni + employerNI, totalTax: it + ni + employerNI, net: salary - it - ni - employerNI, pension };
+  // Employee net pay = salary - employee deductions only (employer NI is not deducted from employee pay)
+  return { salary: grossRevenue, incomeTax: it, ni: ni + employerNI, totalTax: it + ni + employerNI, net: salary - it - ni, pension };
 }
 
 function calcIR35(revenue, pension) {
