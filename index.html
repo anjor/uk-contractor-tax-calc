@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Contractor Tax Calculator 2024/25 — Ltd vs PAYE Comparison</title>
+<meta name="description" content="Free UK contractor tax calculator. Compare Ltd company salary/dividend split vs PAYE employment. See your optimal extraction strategy and save thousands.">
+<meta name="keywords" content="UK contractor tax calculator, Ltd vs PAYE, salary dividend split, contractor tax, IR35, UK tax calculator 2024">
+<meta property="og:title" content="UK Contractor Tax Calculator — Ltd vs PAYE">
+<meta property="og:description" content="See exactly how much more you keep through a Ltd company vs PAYE. Free, instant, no signup.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: #fafafa; color: #111827; line-height: 1.6; }
+.container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+.subtitle { color: #6b7280; font-size: 0.95rem; margin-bottom: 2rem; }
+.input-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.input-group { margin-bottom: 1rem; }
+.input-group:last-child { margin-bottom: 0; }
+label { display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.35rem; }
+input[type="number"], input[type="range"] { width: 100%; }
+input[type="number"] { font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 600; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.5rem 0.75rem; outline: none; font-variant-numeric: tabular-nums; }
+input[type="number"]:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.range-row { display: flex; align-items: center; gap: 1rem; }
+.range-row input[type="range"] { flex: 1; }
+.range-value { font-size: 1.1rem; font-weight: 600; min-width: 80px; text-align: right; font-variant-numeric: tabular-nums; }
+.results { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+@media (max-width: 600px) { .results { grid-template-columns: 1fr; } }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1.25rem; }
+.card h3 { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.75rem; }
+.card .big-number { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.card .effective-rate { font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem; }
+.card.ltd { border-left: 3px solid #10b981; }
+.card.paye { border-left: 3px solid #6b7280; }
+.card.savings { border-left: 3px solid #3b82f6; }
+.savings .big-number { color: #3b82f6; }
+.ltd .big-number { color: #10b981; }
+.breakdown { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; }
+.breakdown h3 { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.75rem; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb; }
+td { padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6; font-size: 0.9rem; }
+td:nth-child(2), td:nth-child(3), th:nth-child(2), th:nth-child(3) { text-align: right; }
+tr:last-child td { border-bottom: none; font-weight: 600; }
+.bar-chart { margin-top: 1.5rem; }
+.bar-row { display: flex; align-items: center; margin-bottom: 0.75rem; }
+.bar-label { width: 60px; font-size: 0.8rem; font-weight: 600; color: #6b7280; }
+.bar-track { flex: 1; height: 28px; background: #f3f4f6; border-radius: 4px; position: relative; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 0.75rem; font-weight: 600; color: #fff; transition: width 0.3s ease; }
+.bar-fill.tax { background: #ef4444; }
+.bar-fill.net { background: #10b981; }
+.bar-amount { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-weight: 600; color: #374151; }
+footer { text-align: center; color: #9ca3af; font-size: 0.8rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+footer a { color: #6b7280; }
+.disclaimer { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; font-size: 0.8rem; color: #92400e; margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🇬🇧 UK Contractor Tax Calculator</h1>
+<p class="subtitle">2024/25 tax year · Ltd company vs PAYE · Instant results, no signup</p>
+
+<div class="disclaimer">
+⚠️ This calculator provides estimates based on standard UK tax rates for 2024/25. It assumes optimal salary/dividend extraction for Ltd. Not financial advice — consult an accountant for your specific situation.
+</div>
+
+<div class="input-section">
+<div class="input-group">
+<label>Annual Gross Revenue / Contract Value (£)</label>
+<input type="number" id="revenue" value="100000" min="0" step="1000">
+</div>
+<div class="input-group">
+<label>Business Expenses (£/year, excl. salary)</label>
+<div class="range-row">
+<input type="range" id="expenses" min="0" max="50000" step="1000" value="5000">
+<span class="range-value" id="expenses-display">£5,000</span>
+</div>
+</div>
+</div>
+
+<div class="results">
+<div class="card ltd">
+<h3>Ltd Company — Take Home</h3>
+<div class="big-number" id="ltd-net">—</div>
+<div class="effective-rate" id="ltd-rate">— effective tax rate</div>
+</div>
+<div class="card paye">
+<h3>PAYE Employment — Take Home</h3>
+<div class="big-number" id="paye-net">—</div>
+<div class="effective-rate" id="paye-rate">— effective tax rate</div>
+</div>
+</div>
+
+<div class="results" style="grid-template-columns: 1fr;">
+<div class="card savings">
+<h3>You Save With a Ltd Company</h3>
+<div class="big-number" id="savings">—</div>
+<div class="effective-rate" id="savings-pct">— more per year</div>
+</div>
+</div>
+
+<div class="breakdown">
+<h3>Tax Breakdown Comparison</h3>
+<table>
+<thead><tr><th></th><th>Ltd Company</th><th>PAYE</th></tr></thead>
+<tbody>
+<tr><td>Gross Revenue</td><td id="t-gross-ltd">—</td><td id="t-gross-paye">—</td></tr>
+<tr><td>Business Expenses</td><td id="t-expenses-ltd">—</td><td>—</td></tr>
+<tr><td>Salary</td><td id="t-salary">—</td><td id="t-paye-salary">—</td></tr>
+<tr><td>Corporation Tax</td><td id="t-corp">—</td><td>—</td></tr>
+<tr><td>Income Tax</td><td id="t-it-ltd">—</td><td id="t-it-paye">—</td></tr>
+<tr><td>National Insurance</td><td id="t-ni-ltd">—</td><td id="t-ni-paye">—</td></tr>
+<tr><td>Dividend Tax</td><td id="t-div">—</td><td>—</td></tr>
+<tr style="border-top: 2px solid #e5e7eb;"><td>Total Tax</td><td id="t-total-ltd">—</td><td id="t-total-paye">—</td></tr>
+<tr><td>Net Take Home</td><td id="t-net-ltd">—</td><td id="t-net-paye">—</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="breakdown">
+<h3>Visual Comparison</h3>
+<div class="bar-chart">
+<div class="bar-row">
+<span class="bar-label">Ltd</span>
+<div class="bar-track">
+<div class="bar-fill net" id="bar-ltd-net" style="width:0%"></div>
+<div class="bar-fill tax" id="bar-ltd-tax" style="width:0%; position:absolute; right:0;"></div>
+</div>
+</div>
+<div class="bar-row">
+<span class="bar-label">PAYE</span>
+<div class="bar-track">
+<div class="bar-fill net" id="bar-paye-net" style="width:0%"></div>
+<div class="bar-fill tax" id="bar-paye-tax" style="width:0%; position:absolute; right:0;"></div>
+</div>
+</div>
+</div>
+<div style="display:flex; gap:1rem; margin-top:0.5rem; font-size:0.75rem; color:#6b7280;">
+<span>🟩 Take home</span><span>🟥 Tax</span>
+</div>
+</div>
+
+<footer>
+<p>Built by <a href="https://github.com/anjor">anjor</a> · Tax rates: HMRC 2024/25 · <a href="https://github.com/anjor/uk-contractor-tax-calc">Source on GitHub</a></p>
+<p style="margin-top:0.25rem;">Free forever. No tracking. No cookies.</p>
+</footer>
+</div>
+
+<script>
+const fmt = n => '£' + Math.round(n).toLocaleString('en-GB');
+const pct = n => (n * 100).toFixed(1) + '%';
+
+function calcEmployeeNI(salary) {
+  const pt = 12570, ul = 50270;
+  if (salary <= pt) return 0;
+  if (salary <= ul) return (salary - pt) * 0.12;
+  return (ul - pt) * 0.12 + (salary - ul) * 0.02;
+}
+
+function calcEmployerNI(salary) {
+  const st = 9100;
+  if (salary <= st) return 0;
+  return (salary - st) * 0.138;
+}
+
+function calcIncomeTax(salary) {
+  const pa = salary > 100000 ? Math.max(0, 12570 - (salary - 100000) / 2) : 12570;
+  const taxable = Math.max(0, salary - pa);
+  if (taxable <= 37700) return taxable * 0.20;
+  if (taxable <= 125140) return 37700 * 0.20 + (taxable - 37700) * 0.40;
+  return 37700 * 0.20 + (125140 - 37700) * 0.40 + (taxable - 125140) * 0.45;
+}
+
+function calcDividendTax(dividends) {
+  const allowance = 500;
+  const taxable = Math.max(0, dividends - allowance);
+  if (taxable <= 37700) return taxable * 0.0875;
+  if (taxable <= 125140) return 37700 * 0.0875 + (taxable - 37700) * 0.3375;
+  return 37700 * 0.0875 + (125140 - 37700) * 0.3375 + (taxable - 125140) * 0.3935;
+}
+
+function calcCorpTax(profits) {
+  if (profits <= 0) return 0;
+  if (profits <= 50000) return profits * 0.19;
+  if (profits >= 250000) return profits * 0.25;
+  const base = profits * 0.25;
+  const relief = ((250000 - profits) * (profits - 50000)) / (250000 - 50000) * 0.015;
+  return base - relief;
+}
+
+function calcLtd(revenue, expenses) {
+  const salary = 12570;
+  const employerNI = calcEmployerNI(salary);
+  const profits = Math.max(0, revenue - expenses - salary - employerNI);
+  const corpTax = calcCorpTax(profits);
+  const dividends = profits - corpTax;
+  const employeeNI = calcEmployeeNI(salary);
+  const incomeTax = calcIncomeTax(salary);
+  const dividendTax = calcDividendTax(dividends);
+  const totalTax = corpTax + incomeTax + employeeNI + employerNI + dividendTax;
+  return { salary, dividends, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net: revenue - expenses - totalTax };
+}
+
+function calcPAYE(salary) {
+  const it = calcIncomeTax(salary);
+  const ni = calcEmployeeNI(salary);
+  const employerNI = calcEmployerNI(salary);
+  return { salary, incomeTax: it, ni: ni + employerNI, totalTax: it + ni + employerNI, net: salary - it - ni - employerNI };
+}
+
+function update() {
+  const revenue = parseFloat(document.getElementById('revenue').value) || 0;
+  const expenses = parseFloat(document.getElementById('expenses').value) || 0;
+  document.getElementById('expenses-display').textContent = fmt(expenses);
+
+  const ltd = calcLtd(revenue, expenses);
+  const paye = calcPAYE(revenue - expenses); // Same effective revenue for fair comparison
+
+  document.getElementById('ltd-net').textContent = fmt(ltd.net);
+  document.getElementById('ltd-rate').textContent = pct(ltd.totalTax / revenue) + ' effective tax rate';
+  document.getElementById('paye-net').textContent = fmt(paye.net);
+  document.getElementById('paye-rate').textContent = pct(paye.totalTax / (revenue - expenses)) + ' effective tax rate';
+
+  const saving = ltd.net - paye.net;
+  document.getElementById('savings').textContent = fmt(Math.max(0, saving));
+  document.getElementById('savings-pct').textContent = saving > 0 ? fmt(saving) + ' more per year with Ltd' : 'PAYE is better at this level';
+
+  // Table
+  document.getElementById('t-gross-ltd').textContent = fmt(revenue);
+  document.getElementById('t-gross-paye').textContent = fmt(revenue);
+  document.getElementById('t-expenses-ltd').textContent = fmt(expenses);
+  document.getElementById('t-salary').textContent = fmt(ltd.salary);
+  document.getElementById('t-paye-salary').textContent = fmt(revenue - expenses);
+  document.getElementById('t-corp').textContent = fmt(ltd.corpTax);
+  document.getElementById('t-it-ltd').textContent = fmt(ltd.incomeTax);
+  document.getElementById('t-it-paye').textContent = fmt(paye.incomeTax);
+  document.getElementById('t-ni-ltd').textContent = fmt(ltd.ni);
+  document.getElementById('t-ni-paye').textContent = fmt(paye.ni);
+  document.getElementById('t-div').textContent = fmt(ltd.dividendTax);
+  document.getElementById('t-total-ltd').textContent = fmt(ltd.totalTax);
+  document.getElementById('t-total-paye').textContent = fmt(paye.totalTax);
+  document.getElementById('t-net-ltd').textContent = fmt(ltd.net);
+  document.getElementById('t-net-paye').textContent = fmt(paye.net);
+
+  // Bars
+  const maxVal = revenue;
+  const ltdNetPct = (ltd.net / maxVal * 100);
+  const ltdTaxPct = (ltd.totalTax / maxVal * 100);
+  const payeNetPct = (paye.net / maxVal * 100);
+  const payeTaxPct = (paye.totalTax / maxVal * 100);
+
+  document.getElementById('bar-ltd-net').style.width = ltdNetPct + '%';
+  document.getElementById('bar-ltd-tax').style.width = ltdTaxPct + '%';
+  document.getElementById('bar-paye-net').style.width = payeNetPct + '%';
+  document.getElementById('bar-paye-tax').style.width = payeTaxPct + '%';
+}
+
+document.getElementById('revenue').addEventListener('input', update);
+document.getElementById('expenses').addEventListener('input', update);
+update();
+</script>
+</body>
+</html>
