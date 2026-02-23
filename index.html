@@ -193,7 +193,8 @@ footer a { color: #6b7280; }
 <tr><td>Salary</td><td id="t-salary">—</td><td id="t-paye-salary">—</td><td class="hidden ir35-col" id="t-ir35-salary">—</td></tr>
 <tr><td>Corporation Tax</td><td id="t-corp">—</td><td>—</td><td class="hidden ir35-col">—</td></tr>
 <tr><td>Income Tax</td><td id="t-it-ltd">—</td><td id="t-it-paye">—</td><td class="hidden ir35-col" id="t-it-ir35">—</td></tr>
-<tr><td>National Insurance</td><td id="t-ni-ltd">—</td><td id="t-ni-paye">—</td><td class="hidden ir35-col" id="t-ni-ir35">—</td></tr>
+<tr><td>Employee NI</td><td id="t-ni-ltd">—</td><td id="t-ni-paye">—</td><td class="hidden ir35-col" id="t-ni-ir35">—</td></tr>
+<tr><td>Employer NI</td><td id="t-employer-ni-ltd">—</td><td id="t-employer-ni-paye">—</td><td class="hidden ir35-col" id="t-employer-ni-ir35">—</td></tr>
 <tr><td>Dividend Tax</td><td id="t-div">—</td><td>—</td><td class="hidden ir35-col">—</td></tr>
 <tr style="border-top: 2px solid #e5e7eb;"><td>Total Tax + Costs</td><td id="t-total-ltd">—</td><td id="t-total-paye">—</td><td class="hidden ir35-col" id="t-total-ir35">—</td></tr>
 <tr><td>Net Take Home</td><td id="t-net-ltd">—</td><td id="t-net-paye">—</td><td class="hidden ir35-col" id="t-net-ir35">—</td></tr>
@@ -374,10 +375,11 @@ function calcPAYE(grossRevenue, pension) {
   // Pension via salary sacrifice: reduces gross salary
   const salary = grossRevenue - pension;
   const it = calcIncomeTax(salary);
-  const ni = calcEmployeeNI(salary);
+  const employeeNI = calcEmployeeNI(salary);
   const employerNI = calcEmployerNI(salary);
   // Employee net pay = salary - employee deductions only (employer NI is not deducted from employee pay)
-  return { salary: grossRevenue, incomeTax: it, ni: ni + employerNI, totalTax: it + ni + employerNI, net: salary - it - ni, pension };
+  // For comparison purposes, we include employer NI in total cost but employee doesn't directly pay it
+  return { salary: grossRevenue, incomeTax: it, ni: employeeNI, employerNI: employerNI, totalTax: it + employeeNI + employerNI, net: salary - it - employeeNI, pension };
 }
 
 function calcIR35(revenue, pension) {
@@ -404,7 +406,7 @@ function calcIR35(revenue, pension) {
   const totalTax = incomeTax + employeeNI + employerNI + umbrellaMargin;
   const net = salary - incomeTax - employeeNI;
   
-  return { salary, incomeTax, ni: employeeNI + employerNI, totalTax, net, umbrellaMargin, pension };
+  return { salary, incomeTax, ni: employeeNI, employerNI: employerNI, totalTax, net, umbrellaMargin, pension };
 }
 
 function update() {
@@ -450,6 +452,7 @@ function update() {
     document.getElementById('t-ir35-salary').textContent = fmt(ir35.salary);
     document.getElementById('t-it-ir35').textContent = fmt(ir35.incomeTax);
     document.getElementById('t-ni-ir35').textContent = fmt(ir35.ni);
+    document.getElementById('t-employer-ni-ir35').textContent = fmt(ir35.employerNI);
     document.getElementById('t-total-ir35').textContent = fmt(ir35.totalTax);
     document.getElementById('t-net-ir35').textContent = fmt(ir35.net);
     
@@ -475,8 +478,10 @@ function update() {
   document.getElementById('t-corp').textContent = fmt(ltd.corpTax);
   document.getElementById('t-it-ltd').textContent = fmt(ltd.incomeTax);
   document.getElementById('t-it-paye').textContent = fmt(paye.incomeTax);
-  document.getElementById('t-ni-ltd').textContent = fmt(ltd.ni);
+  document.getElementById('t-ni-ltd').textContent = fmt(calcEmployeeNI(ltd.salary));
   document.getElementById('t-ni-paye').textContent = fmt(paye.ni);
+  document.getElementById('t-employer-ni-ltd').textContent = fmt(calcEmployerNI(ltd.salary));
+  document.getElementById('t-employer-ni-paye').textContent = fmt(paye.employerNI);
   document.getElementById('t-div').textContent = fmt(ltd.dividendTax);
   document.getElementById('t-total-ltd').textContent = fmt(ltd.totalTax);
   document.getElementById('t-total-paye').textContent = fmt(paye.totalTax);
