@@ -371,15 +371,30 @@ function calcLtd(revenue, expenses, pension, spouseSplit) {
   return { salary, dividends: distributable, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
 }
 
-function calcPAYE(grossRevenue, pension) {
-  // Pension via salary sacrifice: reduces gross salary
-  const salary = grossRevenue - pension;
+function calcPAYE(contractValue, pension) {
+  // For a contractor: the contract value must cover salary + employer NI + pension
+  // Employer NI comes out of the contract value, so: salary + employerNI + pension = contractValue
+  // Need to solve for salary where: salary + calcEmployerNI(salary) + pension = contractValue
+  const available = contractValue - pension;
+  
+  let salary;
+  if (available <= 5000) {
+    salary = available; // Below employer NI threshold
+  } else {
+    // Solve: salary + (salary - 5000) * 0.15 = available
+    // => salary * (1 + 0.15) = available + 5000 * 0.15
+    // => salary = (available + 750) / 1.15
+    salary = (available + 750) / 1.15;
+  }
+  salary = Math.max(0, salary);
+  
   const it = calcIncomeTax(salary);
   const employeeNI = calcEmployeeNI(salary);
   const employerNI = calcEmployerNI(salary);
-  // For fair comparison with Ltd: only count taxes/deductions the employee actually pays
-  // Employer NI is an employer cost, not an employee deduction
-  return { salary: grossRevenue, incomeTax: it, ni: employeeNI, employerNI: employerNI, totalTax: it + employeeNI, net: salary - it - employeeNI, pension };
+  
+  // Total cost to pay this salary from contract value includes employer NI
+  const totalCost = salary + employerNI + pension;
+  return { salary, incomeTax: it, ni: employeeNI, employerNI: employerNI, totalTax: it + employeeNI + employerNI, net: salary - it - employeeNI, pension, totalCost };
 }
 
 function calcIR35(revenue, pension) {
@@ -474,7 +489,7 @@ function update() {
   document.getElementById('t-pension-ltd').textContent = fmt(pension);
   document.getElementById('t-pension-paye').textContent = fmt(pension);
   document.getElementById('t-salary').textContent = fmt(ltd.salary);
-  document.getElementById('t-paye-salary').textContent = fmt(revenue);
+  document.getElementById('t-paye-salary').textContent = fmt(paye.salary);
   document.getElementById('t-corp').textContent = fmt(ltd.corpTax);
   document.getElementById('t-it-ltd').textContent = fmt(ltd.incomeTax);
   document.getElementById('t-it-paye').textContent = fmt(paye.incomeTax);
