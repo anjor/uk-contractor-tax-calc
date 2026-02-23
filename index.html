@@ -377,9 +377,9 @@ function calcPAYE(grossRevenue, pension) {
   const it = calcIncomeTax(salary);
   const employeeNI = calcEmployeeNI(salary);
   const employerNI = calcEmployerNI(salary);
-  // Employee net pay = salary - employee deductions only (employer NI is not deducted from employee pay)
-  // For comparison purposes, we include employer NI in total cost but employee doesn't directly pay it
-  return { salary: grossRevenue, incomeTax: it, ni: employeeNI, employerNI: employerNI, totalTax: it + employeeNI + employerNI, net: salary - it - employeeNI, pension };
+  // For fair comparison with Ltd: only count taxes/deductions the employee actually pays
+  // Employer NI is an employer cost, not an employee deduction
+  return { salary: grossRevenue, incomeTax: it, ni: employeeNI, employerNI: employerNI, totalTax: it + employeeNI, net: salary - it - employeeNI, pension };
 }
 
 function calcIR35(revenue, pension) {
