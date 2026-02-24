@@ -372,29 +372,21 @@ function calcLtd(revenue, expenses, pension, spouseSplit) {
 }
 
 function calcPAYE(contractValue, pension) {
-  // For a contractor: the contract value must cover salary + employer NI + pension
-  // Employer NI comes out of the contract value, so: salary + employerNI + pension = contractValue
-  // Need to solve for salary where: salary + calcEmployerNI(salary) + pension = contractValue
-  const available = contractValue - pension;
+  // For PAYE comparison: the contract value represents the gross salary
+  // The employer pays employer NI separately (this is the cost to employ)
+  // Employee receives gross salary and pays income tax + employee NI from it
+  const grossSalary = Math.max(0, contractValue - pension);
   
-  let salary;
-  if (available <= 5000) {
-    salary = available; // Below employer NI threshold
-  } else {
-    // Solve: salary + (salary - 5000) * 0.15 = available
-    // => salary * (1 + 0.15) = available + 5000 * 0.15
-    // => salary = (available + 750) / 1.15
-    salary = (available + 750) / 1.15;
-  }
-  salary = Math.max(0, salary);
+  const it = calcIncomeTax(grossSalary);
+  const employeeNI = calcEmployeeNI(grossSalary);
+  const employerNI = calcEmployerNI(grossSalary);
   
-  const it = calcIncomeTax(salary);
-  const employeeNI = calcEmployeeNI(salary);
-  const employerNI = calcEmployerNI(salary);
+  // For fair comparison, total tax includes what employer pays (employer NI)
+  // since in contractor scenario, contractor pays both sides
+  const totalTax = it + employeeNI + employerNI;
+  const net = grossSalary - it - employeeNI;
   
-  // Total cost to pay this salary from contract value includes employer NI
-  const totalCost = salary + employerNI + pension;
-  return { salary, incomeTax: it, ni: employeeNI, employerNI: employerNI, totalTax: it + employeeNI + employerNI, net: salary - it - employeeNI, pension, totalCost };
+  return { salary: grossSalary, incomeTax: it, ni: employeeNI, employerNI: employerNI, totalTax, net, pension };
 }
 
 function calcIR35(revenue, pension) {
