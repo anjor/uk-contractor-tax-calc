@@ -372,17 +372,28 @@ function calcLtd(revenue, expenses, pension, spouseSplit) {
 }
 
 function calcPAYE(contractValue, pension) {
-  // For PAYE comparison: the contract value represents the gross salary
-  // The employer pays employer NI separately (this is the cost to employ)
-  // Employee receives gross salary and pays income tax + employee NI from it
-  const grossSalary = Math.max(0, contractValue - pension);
+  // For PAYE comparison: the contract value is the total employment cost
+  // Employer NI comes off first, then pension, leaving gross salary for employee
+  const afterPension = Math.max(0, contractValue - pension);
+  
+  // Calculate gross salary by deducting employer NI from total cost
+  // afterPension = grossSalary + employerNI
+  // afterPension = grossSalary + max(0, (grossSalary - 5000) * 0.15)
+  // Solve: grossSalary = (afterPension + 750) / 1.15 (for salaries > £5000)
+  
+  let grossSalary;
+  if (afterPension <= 5000) {
+    grossSalary = afterPension;
+  } else {
+    grossSalary = (afterPension + 750) / 1.15;
+  }
+  grossSalary = Math.max(0, grossSalary);
   
   const it = calcIncomeTax(grossSalary);
   const employeeNI = calcEmployeeNI(grossSalary);
   const employerNI = calcEmployerNI(grossSalary);
   
-  // For fair comparison, total tax includes what employer pays (employer NI)
-  // since in contractor scenario, contractor pays both sides
+  // Total cost breakdown: gross salary + employer NI + pension
   const totalTax = it + employeeNI + employerNI;
   const net = grossSalary - it - employeeNI;
   
