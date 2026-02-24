@@ -389,8 +389,8 @@ function calcPAYE(contractValue, pension) {
   
   const net = pensionAdjustedSalary - itOnAdjusted - employeeNIOnAdjusted;
   
-  // For comparison purposes, include employer NI in "total cost" to employer
-  const totalTax = itOnAdjusted + employeeNIOnAdjusted + employerNI;
+  // totalTax for comparison excludes employer NI as it doesn't affect employee's take-home
+  const totalTax = itOnAdjusted + employeeNIOnAdjusted;
   
   return { salary: grossSalary, incomeTax: itOnAdjusted, ni: employeeNIOnAdjusted, employerNI: employerNI, totalTax, net, pension };
 }
