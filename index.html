@@ -88,7 +88,7 @@ footer a { color: #6b7280; }
 <p class="subtitle">2025/26 tax year · Ltd company vs PAYE · Instant results, no signup</p>
 
 <div class="disclaimer">
-⚠️ This calculator provides estimates based on standard UK tax rates for 2025/26 (from 6 April 2025). It assumes optimal salary/dividend extraction for Ltd. PAYE calculations treat the input as total employment cost to client (salary + employer NI). Not financial advice — consult an accountant for your specific situation.
+⚠️ This calculator provides estimates based on standard UK tax rates for 2025/26 (from 6 April 2025). It assumes optimal salary/dividend extraction for Ltd. <strong>PAYE calculations treat the input as total employment cost to client (gross salary + employer NI)</strong> — the calculator solves for gross salary accordingly. Not financial advice — consult an accountant for your specific situation.
 </div>
 
 <!-- Income Input -->
@@ -384,38 +384,39 @@ function calcLtd(revenue, expenses, pension, spouseSplit) {
 }
 
 function calcPAYE(contractValue, pension) {
-  // For PAYE comparison: treat contractValue as total employment cost to client
-  // Total cost = salary + employer NI + employer pension contribution
-  // Need to solve: salary + employerNI(salary) + pension = contractValue
+  // PAYE calculation: treat contractValue as TOTAL EMPLOYMENT COST TO CLIENT
+  // This includes: gross salary + employer NI contributions
+  // We solve for gross salary such that: grossSalary + employerNI(grossSalary) = contractValue
   
   const totalCost = Math.max(0, contractValue);
-  const available = totalCost - pension;
   
-  // Iteratively solve for salary where salary + employerNI(salary) = available
-  let salary;
-  if (available <= 5000) {
-    salary = available; // Below employer NI threshold
+  // Calculate gross salary from total employment cost
+  // Employer NI is 15% on earnings above £5,000 (2025/26 rates)
+  let grossSalary;
+  if (totalCost <= 5000) {
+    grossSalary = totalCost; // Below employer NI threshold
   } else {
-    // Solve: salary + (salary - 5000) * 0.15 = available
-    // 1.15 * salary - 750 = available
-    // salary = (available + 750) / 1.15
-    salary = (available + 750) / 1.15;
+    // Solve: grossSalary + (grossSalary - 5000) * 0.15 = totalCost
+    // Rearranging: 1.15 * grossSalary - 750 = totalCost
+    // Therefore: grossSalary = (totalCost + 750) / 1.15
+    grossSalary = (totalCost + 750) / 1.15;
   }
-  salary = Math.max(0, salary);
+  grossSalary = Math.max(0, grossSalary);
   
-  const employerNI = calcEmployerNI(salary);
+  const employerNI = calcEmployerNI(grossSalary);
   
-  // Apply pension as salary sacrifice (reduces taxable salary)
-  const taxableSalary = Math.max(0, salary - pension);
+  // Apply pension contribution as salary sacrifice (reduces taxable income)
+  const taxableSalary = Math.max(0, grossSalary - pension);
   const incomeTax = calcIncomeTax(taxableSalary);
   const employeeNI = calcEmployeeNI(taxableSalary);
   
+  // Net take home = gross salary - pension - income tax - employee NI
   const net = taxableSalary - incomeTax - employeeNI;
   
-  // For comparison: total tax/costs from the contract value
+  // Total tax/costs deducted from the contract value
   const totalTax = incomeTax + employeeNI + employerNI;
   
-  return { salary, incomeTax, ni: employeeNI, employerNI, totalTax, net, pension };
+  return { salary: grossSalary, incomeTax, ni: employeeNI, employerNI, totalTax, net, pension };
 }
 
 function calcIR35(revenue, pension) {

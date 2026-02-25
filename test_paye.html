@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PAYE Test</title>
+</head>
+<body>
+    <h1>Testing PAYE Calculation</h1>
+    <div id="results"></div>
+    
+    <script>
+        function calcEmployerNI(salary) {
+            const st = 5000;
+            if (salary <= st) return 0;
+            return (salary - st) * 0.15;
+        }
+
+        function calcEmployeeNI(salary) {
+            const pt = 12570, ul = 50270;
+            if (salary <= pt) return 0;
+            if (salary <= ul) return (salary - pt) * 0.08;
+            return (ul - pt) * 0.08 + (salary - ul) * 0.02;
+        }
+
+        function calcIncomeTax(income) {
+            const pa = income > 100000 ? Math.max(0, 12570 - (income - 100000) / 2) : 12570;
+            const taxable = Math.max(0, income - pa);
+            if (taxable <= 37700) return taxable * 0.20;
+            if (taxable <= 125140) return 37700 * 0.20 + (taxable - 37700) * 0.40;
+            return 37700 * 0.20 + (125140 - 37700) * 0.40 + (taxable - 125140) * 0.45;
+        }
+
+        // Current implementation
+        function calcPAYE_Current(contractValue, pension) {
+            const totalCost = Math.max(0, contractValue);
+            const available = totalCost - pension;
+            
+            let salary;
+            if (available <= 5000) {
+                salary = available;
+            } else {
+                salary = (available + 750) / 1.15;
+            }
+            salary = Math.max(0, salary);
+            
+            const employerNI = calcEmployerNI(salary);
+            const taxableSalary = Math.max(0, salary - pension);
+            const incomeTax = calcIncomeTax(taxableSalary);
+            const employeeNI = calcEmployeeNI(taxableSalary);
+            const net = taxableSalary - incomeTax - employeeNI;
+            
+            return { salary, employerNI, taxableSalary, incomeTax, employeeNI, net };
+        }
+
+        // Exact implementation per instructions
+        function calcPAYE_Instructions(contractValue, pension) {
+            // Input = total employment cost to client (salary + employer NI)
+            // Gross salary = Input / (1 + employer NI rate)
+            // But employer NI rate is 15% only above £5,000
+            
+            // Solve: salary + max(0, (salary - 5000) * 0.15) = contractValue
+            const totalCost = Math.max(0, contractValue);
+            
+            let grossSalary;
+            if (totalCost <= 5000) {
+                grossSalary = totalCost;
+            } else {
+                // salary + (salary - 5000) * 0.15 = totalCost
+                // 1.15 * salary - 750 = totalCost
+                // salary = (totalCost + 750) / 1.15
+                grossSalary = (totalCost + 750) / 1.15;
+            }
+            
+            grossSalary = Math.max(0, grossSalary);
+            const employerNI = calcEmployerNI(grossSalary);
+            
+            // Apply pension as salary sacrifice
+            const taxableSalary = Math.max(0, grossSalary - pension);
+            const incomeTax = calcIncomeTax(taxableSalary);
+            const employeeNI = calcEmployeeNI(taxableSalary);
+            const net = taxableSalary - incomeTax - employeeNI;
+            
+            return { salary: grossSalary, employerNI, taxableSalary, incomeTax, employeeNI, net };
+        }
+
+        // Test both implementations
+        const testValues = [50000, 100000, 150000, 200000];
+        let results = '<h2>Test Results</h2><table border="1"><tr><th>Input</th><th>Method</th><th>Salary</th><th>Employer NI</th><th>Net Take Home</th><th>Total Cost</th></tr>';
+        
+        testValues.forEach(input => {
+            const current = calcPAYE_Current(input, 0);
+            const instructions = calcPAYE_Instructions(input, 0);
+            
+            results += `<tr><td>£${input.toLocaleString()}</td><td>Current</td><td>£${Math.round(current.salary).toLocaleString()}</td><td>£${Math.round(current.employerNI).toLocaleString()}</td><td>£${Math.round(current.net).toLocaleString()}</td><td>£${Math.round(current.salary + current.employerNI).toLocaleString()}</td></tr>`;
+            results += `<tr><td>£${input.toLocaleString()}</td><td>Instructions</td><td>£${Math.round(instructions.salary).toLocaleString()}</td><td>£${Math.round(instructions.employerNI).toLocaleString()}</td><td>£${Math.round(instructions.net).toLocaleString()}</td><td>£${Math.round(instructions.salary + instructions.employerNI).toLocaleString()}</td></tr>`;
+            
+            const diff = Math.abs(current.net - instructions.net);
+            if (diff > 1) {
+                results += `<tr style="color:red"><td colspan="6">DIFFERENCE: £${Math.round(diff).toLocaleString()}</td></tr>`;
+            }
+        });
+        
+        results += '</table>';
+        document.getElementById('results').innerHTML = results;
+    </script>
+</body>
+</html>
