@@ -170,6 +170,11 @@ footer a { color: #6b7280; }
 <span class="toggle-label">Show IR35 Inside (umbrella)</span>
 <span class="toggle-hint">What if you're caught inside IR35?</span>
 </div>
+<div class="toggle-row">
+<label class="toggle"><input type="checkbox" id="separate-paye-toggle" onchange="update()"><span class="toggle-slider"></span></label>
+<span class="toggle-label">Use different PAYE package</span>
+<span class="toggle-hint">Compare different salary vs day rate amounts</span>
+</div>
 <div class="input-group">
 <label>Spouse Dividend Share (%)</label>
 <div class="range-row">
@@ -178,6 +183,24 @@ footer a { color: #6b7280; }
 </div>
 <div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Split dividends between you and spouse to utilize both personal allowances. 0% = no spouse, 50% = equal split.</div>
 </div>
+</div>
+
+<!-- Separate PAYE Package -->
+<div class="input-section hidden" id="paye-package-section">
+<h3>PAYE Package Details</h3>
+<div class="input-group">
+<label>Base Salary (£/year)</label>
+<input type="number" id="paye-salary" value="80000" min="0" step="1000">
+</div>
+<div class="input-group">
+<label>Annual Bonus (£/year)</label>
+<input type="number" id="paye-bonus" value="10000" min="0" step="1000">
+</div>
+<div class="input-group">
+<label>Employer Pension Contribution (£/year)</label>
+<input type="number" id="paye-employer-pension" value="5000" min="0" step="500">
+</div>
+<div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Total package value will be calculated for comparison with Ltd company earnings.</div>
 </div>
 
 <!-- Results -->
@@ -419,28 +442,42 @@ function calcLtd(revenue, expenses, pension, spouseSharePct) {
   return { salary, dividends: distributable, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
 }
 
-function calcPAYE(grossSalary, pension) {
+function calcPAYE(grossSalary, pension, separatePackage) {
   // PAYE calculation: input is gross salary (what employee earns)
   // Employer NI is paid BY the employer, not deducted from employee salary
 
-  const salary = Math.max(0, grossSalary);
+  let salary, bonus, employerPension;
+  if (separatePackage) {
+    salary = Math.max(0, separatePackage.salary || 0);
+    bonus = Math.max(0, separatePackage.bonus || 0);
+    employerPension = Math.max(0, separatePackage.employerPension || 0);
+  } else {
+    salary = Math.max(0, grossSalary);
+    bonus = 0;
+    employerPension = 0;
+  }
+
+  const totalGross = salary + bonus;
 
   // Apply pension contribution as salary sacrifice (reduces taxable income)
-  const taxableSalary = Math.max(0, salary - pension);
+  const taxableSalary = Math.max(0, totalGross - pension);
   const incomeTax = calcIncomeTax(taxableSalary);
   const employeeNI = calcEmployeeNI(taxableSalary);
 
   // Employer NI is calculated but NOT deducted from employee take-home
-  const employerNI = calcEmployerNI(salary);
+  const employerNI = calcEmployerNI(totalGross);
 
-  // Net take home = gross salary - pension - income tax - employee NI
+  // Net take home = gross salary + bonus - pension - income tax - employee NI
   // (employer NI is NOT deducted from employee)
   const net = taxableSalary - incomeTax - employeeNI;
 
   // Total tax/costs borne by employee (excludes employer NI)
   const totalTax = incomeTax + employeeNI;
 
-  return { salary, incomeTax, ni: employeeNI, employerNI, totalTax, net, pension };
+  // Total package value includes employer pension
+  const packageValue = totalGross + employerPension;
+
+  return { salary: totalGross, bonus, employerPension, incomeTax, ni: employeeNI, employerNI, totalTax, net, pension, packageValue };
 }
 
 function calcIR35(revenue, pension) {
@@ -476,13 +513,26 @@ function update() {
   const pension = parseFloat(document.getElementById('pension').value) || 0;
   const showIR35 = document.getElementById('ir35-toggle').checked;
   const spouseSharePct = parseFloat(document.getElementById('spouse-share').value) || 0;
+  const separatePAYE = document.getElementById('separate-paye-toggle').checked;
 
   document.getElementById('expenses-display').textContent = fmt(expenses);
   document.getElementById('pension-display').textContent = fmt(pension);
   document.getElementById('spouse-share-display').textContent = spouseSharePct + '%';
 
+  // Show/hide separate PAYE package section
+  document.getElementById('paye-package-section').classList.toggle('hidden', !separatePAYE);
+
   const ltd = calcLtd(revenue, expenses, pension, spouseSharePct);
-  const paye = calcPAYE(revenue, pension);
+
+  let paye;
+  if (separatePAYE) {
+    const payeSalary = parseFloat(document.getElementById('paye-salary').value) || 0;
+    const payeBonus = parseFloat(document.getElementById('paye-bonus').value) || 0;
+    const payeEmployerPension = parseFloat(document.getElementById('paye-employer-pension').value) || 0;
+    paye = calcPAYE(0, pension, { salary: payeSalary, bonus: payeBonus, employerPension: payeEmployerPension });
+  } else {
+    paye = calcPAYE(revenue, pension);
+  }
   
   // IR35 visibility
   document.getElementById('ir35-card').classList.toggle('hidden', !showIR35);
@@ -531,12 +581,12 @@ function update() {
 
   // Table
   document.getElementById('t-gross-ltd').textContent = fmt(revenue);
-  document.getElementById('t-gross-paye').textContent = fmt(revenue);
+  document.getElementById('t-gross-paye').textContent = separatePAYE ? fmt(paye.packageValue || paye.salary) : fmt(revenue);
   document.getElementById('t-expenses-ltd').textContent = fmt(expenses);
   document.getElementById('t-pension-ltd').textContent = fmt(pension);
   document.getElementById('t-pension-paye').textContent = fmt(pension);
   document.getElementById('t-salary').textContent = fmt(ltd.salary);
-  document.getElementById('t-paye-salary').textContent = fmt(paye.salary);
+  document.getElementById('t-paye-salary').textContent = separatePAYE ? fmt(paye.salary) + (paye.employerPension ? ' (+' + fmt(paye.employerPension) + ' pension)' : '') : fmt(paye.salary);
   document.getElementById('t-corp').textContent = fmt(ltd.corpTax);
   document.getElementById('t-it-ltd').textContent = fmt(ltd.incomeTax);
   document.getElementById('t-it-paye').textContent = fmt(paye.incomeTax);
@@ -569,6 +619,9 @@ document.getElementById('workdays').addEventListener('input', update);
 document.getElementById('hourlyrate').addEventListener('input', update);
 document.getElementById('hoursweek').addEventListener('input', update);
 document.getElementById('workweeks').addEventListener('input', update);
+document.getElementById('paye-salary').addEventListener('input', update);
+document.getElementById('paye-bonus').addEventListener('input', update);
+document.getElementById('paye-employer-pension').addEventListener('input', update);
 update();
 </script>
 <footer style="max-width:800px;margin:2rem auto;padding:1rem 1.5rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.8rem;color:#9ca3af;">
