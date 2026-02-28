@@ -175,6 +175,11 @@ footer a { color: #6b7280; }
 <span class="toggle-label">Use different PAYE package</span>
 <span class="toggle-hint">Compare different salary vs day rate amounts</span>
 </div>
+<div class="toggle-row">
+<label class="toggle"><input type="checkbox" id="basic-rate-toggle" onchange="update()"><span class="toggle-slider"></span></label>
+<span class="toggle-label">Extract only up to basic rate (£50,270)</span>
+<span class="toggle-hint">Keep profits in company above basic rate threshold</span>
+</div>
 <div class="input-group">
 <label>Spouse Dividend Share (%)</label>
 <div class="range-row">
@@ -245,6 +250,7 @@ footer a { color: #6b7280; }
 <tr><td>Employee NI</td><td id="t-ni-ltd">—</td><td id="t-ni-paye">—</td><td class="hidden ir35-col" id="t-ni-ir35">—</td></tr>
 <tr><td>Employer NI</td><td id="t-employer-ni-ltd">—</td><td id="t-employer-ni-paye">—</td><td class="hidden ir35-col" id="t-employer-ni-ir35">—</td></tr>
 <tr><td>Dividend Tax</td><td id="t-div">—</td><td>—</td><td class="hidden ir35-col">—</td></tr>
+<tr id="retained-cash-row" class="hidden"><td>Cash Retained in Company</td><td id="t-retained">—</td><td>—</td><td class="hidden ir35-col">—</td></tr>
 <tr style="border-top: 2px solid #e5e7eb;"><td>Total Tax + Costs</td><td id="t-total-ltd">—</td><td id="t-total-paye">—</td><td class="hidden ir35-col" id="t-total-ir35">—</td></tr>
 <tr><td>Net Take Home</td><td id="t-net-ltd">—</td><td id="t-net-paye">—</td><td class="hidden ir35-col" id="t-net-ir35">—</td></tr>
 </tbody>
@@ -412,7 +418,7 @@ function calcCorpTax(profits) {
   return base - relief;
 }
 
-function calcLtd(revenue, expenses, pension, spouseSharePct) {
+function calcLtd(revenue, expenses, pension, spouseSharePct, limitToBasicRate) {
   const salary = 12570;
   const employerNI = calcEmployerNI(salary);
   // Pension paid as employer contribution — deductible expense for corp tax
@@ -420,18 +426,31 @@ function calcLtd(revenue, expenses, pension, spouseSharePct) {
   const corpTax = calcCorpTax(profits);
   const distributable = profits - corpTax;
 
+  // If limiting to basic rate, only extract dividends that keep total income <= £50,270
+  let extractedDividends = distributable;
+  let retainedCash = 0;
+
+  if (limitToBasicRate) {
+    const basicRateThreshold = 50270;
+    const maxDividendExtraction = Math.max(0, basicRateThreshold - salary);
+    if (distributable > maxDividendExtraction) {
+      extractedDividends = maxDividendExtraction;
+      retainedCash = distributable - extractedDividends;
+    }
+  }
+
   let dividendTax, net;
-  if (spouseSharePct > 0 && distributable > 0) {
+  if (spouseSharePct > 0 && extractedDividends > 0) {
     // Split dividends based on spouse percentage
-    const spouseDiv = distributable * (spouseSharePct / 100);
-    const directorDiv = distributable * (1 - spouseSharePct / 100);
+    const spouseDiv = extractedDividends * (spouseSharePct / 100);
+    const directorDiv = extractedDividends * (1 - spouseSharePct / 100);
     // Director: salary + director dividends
     const dirDivTax = calcDividendTaxSimple(directorDiv);
     // Spouse: just dividends (assuming no other income, so full personal allowance unused but dividends taxed separately)
     const spouseDivTax = calcDividendTaxSimple(spouseDiv);
     dividendTax = dirDivTax + spouseDivTax;
   } else {
-    dividendTax = calcDividendTaxSimple(distributable);
+    dividendTax = calcDividendTaxSimple(extractedDividends);
   }
 
   const employeeNI = calcEmployeeNI(salary);
@@ -439,7 +458,7 @@ function calcLtd(revenue, expenses, pension, spouseSharePct) {
   const totalTax = corpTax + incomeTax + employeeNI + employerNI + dividendTax;
   net = revenue - expenses - pension - totalTax;
 
-  return { salary, dividends: distributable, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
+  return { salary, dividends: extractedDividends, totalDividends: distributable, retainedCash, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
 }
 
 function calcPAYE(grossSalary, pension, separatePackage) {
@@ -514,6 +533,7 @@ function update() {
   const showIR35 = document.getElementById('ir35-toggle').checked;
   const spouseSharePct = parseFloat(document.getElementById('spouse-share').value) || 0;
   const separatePAYE = document.getElementById('separate-paye-toggle').checked;
+  const basicRateLimit = document.getElementById('basic-rate-toggle').checked;
 
   document.getElementById('expenses-display').textContent = fmt(expenses);
   document.getElementById('pension-display').textContent = fmt(pension);
@@ -522,7 +542,7 @@ function update() {
   // Show/hide separate PAYE package section
   document.getElementById('paye-package-section').classList.toggle('hidden', !separatePAYE);
 
-  const ltd = calcLtd(revenue, expenses, pension, spouseSharePct);
+  const ltd = calcLtd(revenue, expenses, pension, spouseSharePct, basicRateLimit);
 
   let paye;
   if (separatePAYE) {
@@ -546,7 +566,11 @@ function update() {
   if (window.innerWidth <= 600) grid.style.gridTemplateColumns = '1fr';
 
   // Ltd title
-  document.getElementById('ltd-title').textContent = spouseSharePct > 0 ? `Ltd Company (${spouseSharePct}% Spouse) — Take Home` : 'Ltd Company — Take Home';
+  let ltdTitle = 'Ltd Company';
+  if (spouseSharePct > 0) ltdTitle += ` (${spouseSharePct}% Spouse)`;
+  if (basicRateLimit && ltd.retainedCash > 0) ltdTitle += ` (Basic Rate Limited)`;
+  ltdTitle += ' — Take Home';
+  document.getElementById('ltd-title').textContent = ltdTitle;
 
   document.getElementById('ltd-net').textContent = fmt(ltd.net);
   document.getElementById('ltd-rate').textContent = revenue > 0 ? pct(ltd.totalTax / revenue) + ' effective tax rate' : '—';
@@ -595,6 +619,14 @@ function update() {
   document.getElementById('t-employer-ni-ltd').textContent = fmt(calcEmployerNI(ltd.salary));
   document.getElementById('t-employer-ni-paye').textContent = fmt(paye.employerNI);
   document.getElementById('t-div').textContent = fmt(ltd.dividendTax);
+
+  // Show retained cash row only if there's cash being retained
+  const showRetainedCash = basicRateLimit && ltd.retainedCash > 0;
+  document.getElementById('retained-cash-row').classList.toggle('hidden', !showRetainedCash);
+  if (showRetainedCash) {
+    document.getElementById('t-retained').textContent = fmt(ltd.retainedCash);
+  }
+
   document.getElementById('t-total-ltd').textContent = fmt(ltd.totalTax);
   document.getElementById('t-total-paye').textContent = fmt(paye.totalTax);
   document.getElementById('t-net-ltd').textContent = fmt(ltd.net);
