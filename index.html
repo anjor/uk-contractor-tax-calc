@@ -147,10 +147,13 @@ footer a { color: #6b7280; }
 <span class="toggle-label">Show IR35 Inside (umbrella)</span>
 <span class="toggle-hint">What if you're caught inside IR35?</span>
 </div>
-<div class="toggle-row">
-<label class="toggle"><input type="checkbox" id="spouse-toggle" onchange="update()"><span class="toggle-slider"></span></label>
-<span class="toggle-label">Spouse as shareholder (50/50 dividends)</span>
-<span class="toggle-hint">Split dividends across two personal allowances</span>
+<div class="input-group">
+<label>Spouse Dividend Share (%)</label>
+<div class="range-row">
+<input type="range" id="spouse-share" min="0" max="100" step="5" value="0" onchange="update()">
+<span class="range-value" id="spouse-share-display">0%</span>
+</div>
+<div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Split dividends between you and spouse to utilize both personal allowances. 0% = no spouse, 50% = equal split.</div>
 </div>
 </div>
 
@@ -354,32 +357,33 @@ function calcCorpTax(profits) {
   return base - relief;
 }
 
-function calcLtd(revenue, expenses, pension, spouseSplit) {
+function calcLtd(revenue, expenses, pension, spouseSharePct) {
   const salary = 12570;
   const employerNI = calcEmployerNI(salary);
   // Pension paid as employer contribution — deductible expense for corp tax
   const profits = Math.max(0, revenue - expenses - salary - employerNI - pension);
   const corpTax = calcCorpTax(profits);
   const distributable = profits - corpTax;
-  
+
   let dividendTax, net;
-  if (spouseSplit && distributable > 0) {
-    // Split dividends 50/50 between director and spouse
-    const halfDiv = distributable / 2;
-    // Director: salary + half dividends
-    const dirDivTax = calcDividendTaxSimple(halfDiv);
+  if (spouseSharePct > 0 && distributable > 0) {
+    // Split dividends based on spouse percentage
+    const spouseDiv = distributable * (spouseSharePct / 100);
+    const directorDiv = distributable * (1 - spouseSharePct / 100);
+    // Director: salary + director dividends
+    const dirDivTax = calcDividendTaxSimple(directorDiv);
     // Spouse: just dividends (assuming no other income, so full personal allowance unused but dividends taxed separately)
-    const spouseDivTax = calcDividendTaxSimple(halfDiv);
+    const spouseDivTax = calcDividendTaxSimple(spouseDiv);
     dividendTax = dirDivTax + spouseDivTax;
   } else {
     dividendTax = calcDividendTaxSimple(distributable);
   }
-  
+
   const employeeNI = calcEmployeeNI(salary);
   const incomeTax = calcIncomeTax(salary);
   const totalTax = corpTax + incomeTax + employeeNI + employerNI + dividendTax;
   net = revenue - expenses - pension - totalTax;
-  
+
   return { salary, dividends: distributable, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
 }
 
@@ -439,12 +443,13 @@ function update() {
   const expenses = parseFloat(document.getElementById('expenses').value) || 0;
   const pension = parseFloat(document.getElementById('pension').value) || 0;
   const showIR35 = document.getElementById('ir35-toggle').checked;
-  const spouseSplit = document.getElementById('spouse-toggle').checked;
-  
+  const spouseSharePct = parseFloat(document.getElementById('spouse-share').value) || 0;
+
   document.getElementById('expenses-display').textContent = fmt(expenses);
   document.getElementById('pension-display').textContent = fmt(pension);
+  document.getElementById('spouse-share-display').textContent = spouseSharePct + '%';
 
-  const ltd = calcLtd(revenue, expenses, pension, spouseSplit);
+  const ltd = calcLtd(revenue, expenses, pension, spouseSharePct);
   const paye = calcPAYE(revenue, pension);
   
   // IR35 visibility
@@ -459,7 +464,7 @@ function update() {
   if (window.innerWidth <= 600) grid.style.gridTemplateColumns = '1fr';
 
   // Ltd title
-  document.getElementById('ltd-title').textContent = spouseSplit ? 'Ltd Company (Spouse Split) — Take Home' : 'Ltd Company — Take Home';
+  document.getElementById('ltd-title').textContent = spouseSharePct > 0 ? `Ltd Company (${spouseSharePct}% Spouse) — Take Home` : 'Ltd Company — Take Home';
 
   document.getElementById('ltd-net').textContent = fmt(ltd.net);
   document.getElementById('ltd-rate').textContent = revenue > 0 ? pct(ltd.totalTax / revenue) + ' effective tax rate' : '—';
@@ -526,6 +531,7 @@ function update() {
 document.getElementById('revenue').addEventListener('input', update);
 document.getElementById('expenses').addEventListener('input', update);
 document.getElementById('pension').addEventListener('input', update);
+document.getElementById('spouse-share').addEventListener('input', update);
 document.getElementById('dayrate').addEventListener('input', update);
 document.getElementById('workdays').addEventListener('input', update);
 update();
