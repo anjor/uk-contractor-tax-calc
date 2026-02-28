@@ -97,6 +97,7 @@ footer a { color: #6b7280; }
 <div class="input-mode-toggle">
 <button id="mode-annual" class="active" onclick="setMode('annual')">Annual Revenue</button>
 <button id="mode-dayrate" onclick="setMode('dayrate')">Day Rate</button>
+<button id="mode-hourly" onclick="setMode('hourly')">Hourly Rate</button>
 </div>
 <div id="annual-input">
 <div class="input-group">
@@ -116,6 +117,28 @@ footer a { color: #6b7280; }
 </div>
 </div>
 <div class="computed-revenue" id="computed-revenue">= £110,000 per year</div>
+</div>
+<div id="hourly-input" class="hidden">
+<div class="input-row">
+<div class="input-group">
+<label>Hourly Rate (£)</label>
+<input type="number" id="hourlyrate" value="65" min="0" step="1">
+</div>
+<div class="input-group">
+<label>Hours / Week</label>
+<input type="number" id="hoursweek" class="small" value="37.5" min="1" max="80" step="0.5">
+</div>
+</div>
+<div class="input-row">
+<div class="input-group">
+<label>Working Weeks / Year</label>
+<input type="number" id="workweeks" class="small" value="46" min="1" max="52" step="1">
+</div>
+<div class="input-group">
+<!-- empty for spacing -->
+</div>
+</div>
+<div class="computed-revenue" id="computed-revenue-hourly">= £112,125 per year</div>
 </div>
 </div>
 
@@ -273,8 +296,10 @@ function setMode(mode) {
   inputMode = mode;
   document.getElementById('mode-annual').classList.toggle('active', mode === 'annual');
   document.getElementById('mode-dayrate').classList.toggle('active', mode === 'dayrate');
+  document.getElementById('mode-hourly').classList.toggle('active', mode === 'hourly');
   document.getElementById('annual-input').classList.toggle('hidden', mode !== 'annual');
   document.getElementById('dayrate-input').classList.toggle('hidden', mode !== 'dayrate');
+  document.getElementById('hourly-input').classList.toggle('hidden', mode !== 'hourly');
   update();
 }
 
@@ -284,6 +309,13 @@ function getRevenue() {
     const days = parseFloat(document.getElementById('workdays').value) || 220;
     const rev = rate * days;
     document.getElementById('computed-revenue').textContent = '= ' + fmt(rev) + ' per year';
+    return rev;
+  } else if (inputMode === 'hourly') {
+    const rate = parseFloat(document.getElementById('hourlyrate').value) || 0;
+    const hoursWeek = parseFloat(document.getElementById('hoursweek').value) || 37.5;
+    const weeksYear = parseFloat(document.getElementById('workweeks').value) || 46;
+    const rev = rate * hoursWeek * weeksYear;
+    document.getElementById('computed-revenue-hourly').textContent = '= ' + fmt(rev) + ' per year';
     return rev;
   }
   return parseFloat(document.getElementById('revenue').value) || 0;
@@ -534,6 +566,9 @@ document.getElementById('pension').addEventListener('input', update);
 document.getElementById('spouse-share').addEventListener('input', update);
 document.getElementById('dayrate').addEventListener('input', update);
 document.getElementById('workdays').addEventListener('input', update);
+document.getElementById('hourlyrate').addEventListener('input', update);
+document.getElementById('hoursweek').addEventListener('input', update);
+document.getElementById('workweeks').addEventListener('input', update);
 update();
 </script>
 <footer style="max-width:800px;margin:2rem auto;padding:1rem 1.5rem;border-top:1px solid #e5e7eb;text-align:center;font-size:0.8rem;color:#9ca3af;">
