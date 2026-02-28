@@ -160,6 +160,14 @@ footer a { color: #6b7280; }
 </div>
 <div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Ltd: paid as employer contribution (reduces corp tax). PAYE: salary sacrifice (reduces income tax + NI). Max £60k/year.</div>
 </div>
+<div class="input-group">
+<label>PAYE Employer Pension Matching (%)</label>
+<div class="range-row">
+<input type="range" id="employer-pension-pct" min="0" max="15" step="0.5" value="0">
+<span class="range-value" id="employer-pension-pct-display">0%</span>
+</div>
+<div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Employer pension contribution as % of salary (common: 3-5%). This is ON TOP of salary, increases total package value.</div>
+</div>
 </div>
 
 <!-- Options -->
@@ -461,7 +469,7 @@ function calcLtd(revenue, expenses, pension, spouseSharePct, limitToBasicRate) {
   return { salary, dividends: extractedDividends, totalDividends: distributable, retainedCash, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
 }
 
-function calcPAYE(grossSalary, pension, separatePackage) {
+function calcPAYE(grossSalary, pension, separatePackage, employerPensionPct) {
   // PAYE calculation: input is gross salary (what employee earns)
   // Employer NI is paid BY the employer, not deducted from employee salary
 
@@ -473,7 +481,8 @@ function calcPAYE(grossSalary, pension, separatePackage) {
   } else {
     salary = Math.max(0, grossSalary);
     bonus = 0;
-    employerPension = 0;
+    // Calculate employer pension as percentage of salary
+    employerPension = salary * (employerPensionPct || 0) / 100;
   }
 
   const totalGross = salary + bonus;
@@ -535,9 +544,12 @@ function update() {
   const separatePAYE = document.getElementById('separate-paye-toggle').checked;
   const basicRateLimit = document.getElementById('basic-rate-toggle').checked;
 
+  const employerPensionPct = parseFloat(document.getElementById('employer-pension-pct').value) || 0;
+
   document.getElementById('expenses-display').textContent = fmt(expenses);
   document.getElementById('pension-display').textContent = fmt(pension);
   document.getElementById('spouse-share-display').textContent = spouseSharePct + '%';
+  document.getElementById('employer-pension-pct-display').textContent = employerPensionPct + '%';
 
   // Show/hide separate PAYE package section
   document.getElementById('paye-package-section').classList.toggle('hidden', !separatePAYE);
@@ -551,7 +563,7 @@ function update() {
     const payeEmployerPension = parseFloat(document.getElementById('paye-employer-pension').value) || 0;
     paye = calcPAYE(0, pension, { salary: payeSalary, bonus: payeBonus, employerPension: payeEmployerPension });
   } else {
-    paye = calcPAYE(revenue, pension);
+    paye = calcPAYE(revenue, pension, null, employerPensionPct);
   }
   
   // IR35 visibility
@@ -610,7 +622,7 @@ function update() {
   document.getElementById('t-pension-ltd').textContent = fmt(pension);
   document.getElementById('t-pension-paye').textContent = fmt(pension);
   document.getElementById('t-salary').textContent = fmt(ltd.salary);
-  document.getElementById('t-paye-salary').textContent = separatePAYE ? fmt(paye.salary) + (paye.employerPension ? ' (+' + fmt(paye.employerPension) + ' pension)' : '') : fmt(paye.salary);
+  document.getElementById('t-paye-salary').textContent = fmt(paye.salary) + (paye.employerPension > 0 ? ' (+' + fmt(paye.employerPension) + ' employer pension)' : '');
   document.getElementById('t-corp').textContent = fmt(ltd.corpTax);
   document.getElementById('t-it-ltd').textContent = fmt(ltd.incomeTax);
   document.getElementById('t-it-paye').textContent = fmt(paye.incomeTax);
@@ -651,6 +663,7 @@ document.getElementById('workdays').addEventListener('input', update);
 document.getElementById('hourlyrate').addEventListener('input', update);
 document.getElementById('hoursweek').addEventListener('input', update);
 document.getElementById('workweeks').addEventListener('input', update);
+document.getElementById('employer-pension-pct').addEventListener('input', update);
 document.getElementById('paye-salary').addEventListener('input', update);
 document.getElementById('paye-bonus').addEventListener('input', update);
 document.getElementById('paye-employer-pension').addEventListener('input', update);
