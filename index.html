@@ -168,6 +168,14 @@ footer a { color: #6b7280; }
 </div>
 <div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Employer pension contribution as % of salary (common: 3-5%). This is ON TOP of salary, increases total package value.</div>
 </div>
+<div class="input-group">
+<label>Spousal Salary (Ltd Only) (£/year)</label>
+<div class="range-row">
+<input type="range" id="spousal-salary" min="0" max="25000" step="500" value="0">
+<span class="range-value" id="spousal-salary-display">£0</span>
+</div>
+<div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Pay spouse a salary from Ltd company (e.g. up to £12,570 tax-free allowance). Deductible as business expense, reduces corporation tax.</div>
+</div>
 </div>
 
 <!-- Options -->
@@ -253,6 +261,7 @@ footer a { color: #6b7280; }
 <tr><td>Pension Contribution</td><td id="t-pension-ltd">—</td><td id="t-pension-paye">—</td><td class="hidden ir35-col" id="t-pension-ir35">—</td></tr>
 <tr class="hidden ir35-col"><td>Umbrella Margin</td><td>—</td><td>—</td><td id="t-umbrella">—</td></tr>
 <tr><td>Salary</td><td id="t-salary">—</td><td id="t-paye-salary">—</td><td class="hidden ir35-col" id="t-ir35-salary">—</td></tr>
+<tr id="spousal-salary-row" class="hidden"><td>Spousal Salary</td><td id="t-spousal-salary">—</td><td>—</td><td class="hidden ir35-col">—</td></tr>
 <tr><td>Corporation Tax</td><td id="t-corp">—</td><td>—</td><td class="hidden ir35-col">—</td></tr>
 <tr><td>Income Tax</td><td id="t-it-ltd">—</td><td id="t-it-paye">—</td><td class="hidden ir35-col" id="t-it-ir35">—</td></tr>
 <tr><td>Employee NI</td><td id="t-ni-ltd">—</td><td id="t-ni-paye">—</td><td class="hidden ir35-col" id="t-ni-ir35">—</td></tr>
@@ -426,11 +435,15 @@ function calcCorpTax(profits) {
   return base - relief;
 }
 
-function calcLtd(revenue, expenses, pension, spouseSharePct, limitToBasicRate) {
+function calcLtd(revenue, expenses, pension, spouseSharePct, limitToBasicRate, spousalSalary) {
   const salary = 12570;
   const employerNI = calcEmployerNI(salary);
+
+  // Spousal salary and associated employer NI are deductible business expenses
+  const spousalEmployerNI = spousalSalary > 0 ? calcEmployerNI(spousalSalary) : 0;
+
   // Pension paid as employer contribution — deductible expense for corp tax
-  const profits = Math.max(0, revenue - expenses - salary - employerNI - pension);
+  const profits = Math.max(0, revenue - expenses - salary - employerNI - pension - spousalSalary - spousalEmployerNI);
   const corpTax = calcCorpTax(profits);
   const distributable = profits - corpTax;
 
@@ -466,7 +479,7 @@ function calcLtd(revenue, expenses, pension, spouseSharePct, limitToBasicRate) {
   const totalTax = corpTax + incomeTax + employeeNI + employerNI + dividendTax;
   net = revenue - expenses - pension - totalTax;
 
-  return { salary, dividends: extractedDividends, totalDividends: distributable, retainedCash, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
+  return { salary, spousalSalary, spousalEmployerNI, dividends: extractedDividends, totalDividends: distributable, retainedCash, corpTax, incomeTax, ni: employeeNI + employerNI, dividendTax, totalTax, net, pension };
 }
 
 function calcPAYE(grossSalary, pension, separatePackage, employerPensionPct) {
@@ -545,16 +558,18 @@ function update() {
   const basicRateLimit = document.getElementById('basic-rate-toggle').checked;
 
   const employerPensionPct = parseFloat(document.getElementById('employer-pension-pct').value) || 0;
+  const spousalSalary = parseFloat(document.getElementById('spousal-salary').value) || 0;
 
   document.getElementById('expenses-display').textContent = fmt(expenses);
   document.getElementById('pension-display').textContent = fmt(pension);
   document.getElementById('spouse-share-display').textContent = spouseSharePct + '%';
   document.getElementById('employer-pension-pct-display').textContent = employerPensionPct + '%';
+  document.getElementById('spousal-salary-display').textContent = fmt(spousalSalary);
 
   // Show/hide separate PAYE package section
   document.getElementById('paye-package-section').classList.toggle('hidden', !separatePAYE);
 
-  const ltd = calcLtd(revenue, expenses, pension, spouseSharePct, basicRateLimit);
+  const ltd = calcLtd(revenue, expenses, pension, spouseSharePct, basicRateLimit, spousalSalary);
 
   let paye;
   if (separatePAYE) {
@@ -623,6 +638,14 @@ function update() {
   document.getElementById('t-pension-paye').textContent = fmt(pension);
   document.getElementById('t-salary').textContent = fmt(ltd.salary);
   document.getElementById('t-paye-salary').textContent = fmt(paye.salary) + (paye.employerPension > 0 ? ' (+' + fmt(paye.employerPension) + ' employer pension)' : '');
+
+  // Show spousal salary row only if spousal salary > 0
+  const showSpousalSalary = spousalSalary > 0;
+  document.getElementById('spousal-salary-row').classList.toggle('hidden', !showSpousalSalary);
+  if (showSpousalSalary) {
+    document.getElementById('t-spousal-salary').textContent = fmt(spousalSalary);
+  }
+
   document.getElementById('t-corp').textContent = fmt(ltd.corpTax);
   document.getElementById('t-it-ltd').textContent = fmt(ltd.incomeTax);
   document.getElementById('t-it-paye').textContent = fmt(paye.incomeTax);
@@ -664,6 +687,7 @@ document.getElementById('hourlyrate').addEventListener('input', update);
 document.getElementById('hoursweek').addEventListener('input', update);
 document.getElementById('workweeks').addEventListener('input', update);
 document.getElementById('employer-pension-pct').addEventListener('input', update);
+document.getElementById('spousal-salary').addEventListener('input', update);
 document.getElementById('paye-salary').addEventListener('input', update);
 document.getElementById('paye-bonus').addEventListener('input', update);
 document.getElementById('paye-employer-pension').addEventListener('input', update);
